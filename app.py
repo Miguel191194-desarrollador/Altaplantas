@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, flash
+from flask import Flask, render_template, request, redirect, flash, send_file
 import pandas as pd
 import smtplib
 from email.mime.text import MIMEText
@@ -28,7 +28,7 @@ def formulario_plantas():
         file_path = os.path.join(SAVE_FOLDER, f'alta_planta_{timestamp}.xlsx')
         df.to_excel(file_path, index=False)
 
-        # Enviar correo
+        # Enviar correo (no funcionará en Render, pero se mantiene por si se usa localmente)
         enviar_correo_aviso(file_path)
 
         flash('Formulario de planta enviado correctamente.')
@@ -65,6 +65,20 @@ def enviar_correo_aviso(file_path):
     except Exception as e:
         print(f'Error enviando el correo: {e}')
 
+# ✅ Ruta para descargar el archivo Excel más reciente
+@app.route('/descargar-ultimo')
+def descargar_ultimo_excel():
+    archivos = [f for f in os.listdir(SAVE_FOLDER) if f.endswith('.xlsx')]
+    if not archivos:
+        return "No hay archivos para descargar."
+
+    archivos.sort(reverse=True)  # Ordena por fecha en nombre
+    archivo_mas_reciente = archivos[0]
+    ruta_completa = os.path.join(SAVE_FOLDER, archivo_mas_reciente)
+
+    return send_file(ruta_completa, as_attachment=True)
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
