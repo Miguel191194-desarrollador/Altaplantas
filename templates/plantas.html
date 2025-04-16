@@ -95,7 +95,8 @@
         }
 
         input[type="text"],
-        input[type="email"] {
+        input[type="email"],
+        select {
             width: 100%;
             padding: 8px;
             margin-top: 4px;
@@ -107,9 +108,14 @@
         }
 
         input[type="text"]:focus,
-        input[type="email"]:focus {
+        input[type="email"]:focus,
+        select:focus {
             border-color: #003366;
             outline: none;
+        }
+
+        input[readonly] {
+            background-color: #f1f1f1;
         }
 
         button {
@@ -154,6 +160,28 @@
 <form action="/guardar" method="post" onsubmit="return validarFormulario();">
     <div class="container">
         <h2>Datos de las Plantas</h2>
+
+        <!-- Bloque: Selección de responsable -->
+        <div class="section">
+            <div class="section-title-cliente"><i class="fas fa-user-tie"></i> Responsable de la Cuenta</div>
+            <div class="form-grid">
+                <div>
+                    <label>Nombre del Responsable</label>
+                    <select name="responsable_nombre" id="responsable_nombre" onchange="actualizarCorreo()" required>
+                        <option value="">-- Selecciona un responsable --</option>
+                        <option value="jmmmorcillo@dimensasl.com">Jose María</option>
+                        <option value="franciscogarcia@dimensasl.com">Francisco</option>
+                        <option value="carmengutierrez@dimensasl.com">Carmen</option>
+                        <option value="damianv@dimensasl.com">Damian</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Correo del Responsable</label>
+                    <input type="email" name="responsable_correo_visible" id="responsable_correo" readonly>
+                    <input type="hidden" name="responsable_correo" id="responsable_correo_hidden">
+                </div>
+            </div>
+        </div>
 
         <!-- Bloque: Nombre del cliente -->
         <div class="section">
@@ -214,7 +242,19 @@ function validarFormulario() {
     }
     return true;
 }
+
+function actualizarCorreo() {
+    const select = document.getElementById('responsable_nombre');
+    const correoVisible = document.getElementById('responsable_correo');
+    const correoOculto = document.getElementById('responsable_correo_hidden');
+    correoVisible.value = select.value;
+    correoOculto.value = select.value;
+}
 </script>
+
+</body>
+</html>
+
 
 </body>
 </html>
