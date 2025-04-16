@@ -15,41 +15,43 @@ app.secret_key = 'supersecretkey'
 # Configuración de logs
 logging.basicConfig(level=logging.INFO)
 
-# Configuración de email desde variables de entorno
-EMAIL_ADDRESS = os.environ.get('EMAIL_USER', 'migueladr191194@gmail.com')  # Por si no se define
-EMAIL_PASSWORD = os.environ.get('EMAIL_PASS', 'zvup wjjv bwas tebs')  # ⚠️ Usar en entorno seguro
+# Configuración de email desde variables de entorno (o valores por defecto)
+EMAIL_ADDRESS = os.environ.get('EMAIL_USER', 'migueladr191194@gmail.com')
+EMAIL_PASSWORD = os.environ.get('EMAIL_PASS', 'zvup wjjv bwas tebs')  # ⚠️ Reemplaza por seguridad en producción
 
-# Ruta donde se guardarán los Excel generados
+# Carpeta donde se guardan los archivos Excel
 SAVE_FOLDER = 'formularios_guardados_plantas'
 os.makedirs(SAVE_FOLDER, exist_ok=True)
 
-
-@app.route('/formulario_plantas', methods=['GET'])
+# Rutas que muestran el formulario
+@app.route('/')
+@app.route('/plantas')
+@app.route('/formulario_plantas')
 def formulario_plantas():
-    return render_template('formulario_plantas.html')
+    return render_template('plantas.html')
 
 
 @app.route('/guardar_plantas', methods=['POST'])
 def guardar_plantas():
     plantas_data = request.form.to_dict()
 
-    # Filtrar campos vacíos
+    # Filtrar datos no vacíos
     plantas_filtradas = {k: v for k, v in plantas_data.items() if v}
 
-    # Nombre del archivo con nombre empresa si existe
+    # Crear nombre del archivo con nombre de empresa si existe
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     nombre_empresa = plantas_data.get('nombre_empresa', 'planta').replace(" ", "_")
     file_path = os.path.join(SAVE_FOLDER, f'{nombre_empresa}_{timestamp}.xlsx')
 
-    # Guardar en Excel
+    # Guardar Excel
     df = pd.DataFrame([plantas_filtradas])
     df.to_excel(file_path, index=False)
 
-    # Enviar email
+    # Enviar correo
     enviar_correo_aviso_plantas(file_path, plantas_data.get('correo_comercial'))
 
     flash('Formulario de plantas enviado correctamente.')
-    return redirect('/formulario_plantas')
+    return redirect('/plantas')
 
 
 def enviar_correo_aviso_plantas(file_path, comercial_email=None):
@@ -64,7 +66,6 @@ def enviar_correo_aviso_plantas(file_path, comercial_email=None):
     body = 'Se ha recibido un nuevo formulario de alta de planta. Se adjunta el archivo Excel.'
     msg.attach(MIMEText(body, 'plain'))
 
-    # Adjuntar archivo
     try:
         with open(file_path, 'rb') as f:
             part = MIMEBase('application', 'octet-stream')
@@ -76,7 +77,6 @@ def enviar_correo_aviso_plantas(file_path, comercial_email=None):
         logging.error(f'Error adjuntando el archivo: {e}')
         return
 
-    # Enviar email
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -101,5 +101,6 @@ def descargar_ultimo_excel_planta():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
 
