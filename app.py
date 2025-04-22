@@ -70,7 +70,7 @@ def crear_excel_plantas_solas(data):
     ]
 
     for i in range(1, 11):
-        fila = 4 + i  # Desde fila 5
+        fila = 3 + i  # Desde fila 4
         valores = [data.get(campo.format(i), "") for campo in campos]
         if not valores[0]:  # Si no hay nombre de planta, se omite
             continue
