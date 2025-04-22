@@ -53,7 +53,7 @@ def guardar_plantas():
     # Mostrar pantalla de agradecimiento
     return render_template('gracias.html')
 
-# Función para generar el Excel con datos de plantas
+# Función para generar el Excel con datos de plantas (orden corregido)
 def crear_excel_plantas_solas(data):
     wb = load_workbook("Copia de alta de plantas solas.xlsx")
     ws = wb.active
@@ -61,7 +61,7 @@ def crear_excel_plantas_solas(data):
     # A2: Nombre del cliente
     ws["A2"] = data.get("nombre_cliente", "")
 
-    columnas = ["B", "D", "C", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
+    columnas = ["B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
     campos = [
         "planta_nombre_{}", "planta_direccion_{}", "planta_cp_{}", "planta_poblacion_{}",
         "planta_provincia_{}", "planta_telefono_{}", "planta_email_{}", "planta_horario_{}",
@@ -70,7 +70,7 @@ def crear_excel_plantas_solas(data):
     ]
 
     for i in range(1, 11):
-        fila = 3 + i  # Desde fila 4
+        fila = 3 + i  # Desde fila 4 en la plantilla
         valores = [data.get(campo.format(i), "") for campo in campos]
         if not valores[0]:  # Si no hay nombre de planta, se omite
             continue
@@ -128,4 +128,5 @@ def descargar_ultimo_excel_planta():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
 
