@@ -185,16 +185,21 @@
             </div>
         </div>
 
-        <!-- Cliente -->
-        <div class="section">
-            <div class="section-title-cliente"><i class="fas fa-user"></i> Nombre del Cliente</div>
-            <div class="form-grid">
-                <div>
-                    <label>Nombre del Cliente</label>
-                    <input type="text" name="nombre_cliente" required>
-                </div>
-            </div>
+      <!-- Cliente -->
+<div class="section">
+    <div class="section-title-cliente"><i class="fas fa-user"></i> Datos del Cliente</div>
+    <div class="form-grid">
+        <div>
+            <label>Nombre del Cliente</label>
+            <input type="text" name="nombre_cliente" required>
         </div>
+        <div>
+            <label>CIF/NIF</label>
+            <input type="text" name="cif_nif_cliente" required>
+        </div>
+    </div>
+</div>
+
 
         <!-- Plantas -->
         {% for i in range(1, 11) %}
