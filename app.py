@@ -61,6 +61,8 @@ def crear_excel_plantas_solas(data):
     # A2: Nombre del cliente
     ws["A2"] = data.get("nombre_cliente", "")
 
+    ws["F2"] = data.get("cif_nif_cliente", "")
+
     columnas = ["B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"]
     campos = [
         "planta_nombre_{}", "planta_direccion_{}", "planta_cp_{}", "planta_poblacion_{}",
