@@ -9,6 +9,12 @@ from openpyxl import load_workbook
 import os
 import logging
 import threading
+# Carga variables desde .env si existe (opcional)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
@@ -17,8 +23,9 @@ app.secret_key = 'supersecretkey'
 logging.basicConfig(level=logging.INFO)
 
 # === Configuración de email (usar variables de entorno) ===
-EMAIL_ADDRESS = os.environ.get('migueladr191194@gmail.com')   # ej. tucuenta@gmail.com
-EMAIL_PASSWORD = os.environ.get('1919191919191919')  # contraseña de aplicación (16 chars)
+# ATENCIÓN: Deben existir EMAIL_USER y EMAIL_PASS en el entorno
+EMAIL_ADDRESS = os.environ.get('EMAIL_USER')    # ej. tucuenta@gmail.com
+EMAIL_PASSWORD = os.environ.get('EMAIL_PASS')   # contraseña de aplicación (16 chars)
 
 # Carpeta para guardar Excel generados
 SAVE_FOLDER = 'formularios_guardados_plantas'
@@ -64,6 +71,13 @@ def descargar_ultimo_excel_planta():
     ruta_completa = os.path.join(SAVE_FOLDER, archivos[0])
     return send_file(ruta_completa, as_attachment=True)
 
+# (opcional) Ruta para verificar que las variables están cargadas
+@app.route("/_env")
+def _env():
+    ok_user = "OK" if os.getenv("EMAIL_USER") else "MISSING"
+    ok_pass = "OK" if os.getenv("EMAIL_PASS") else "MISSING"
+    return f"EMAIL_USER: {ok_user} | EMAIL_PASS: {ok_pass}"
+
 # -------------- Lógica de Excel --------------
 
 def crear_excel_plantas_solas_a_archivo(data, file_path):
@@ -95,8 +109,7 @@ def crear_excel_plantas_solas_a_archivo(data, file_path):
     for i in range(1, 11):
         fila = 4 + i
         valores = [data.get(campo.format(i), "") for campo in campos]
-        # Si no hay nombre de planta, omitimos la fila
-        if not (valores[0] or "").strip():
+        if not (valores[0] or "").strip():  # sin nombre de planta -> omitir
             continue
         for col, val in zip(columnas, valores):
             ws[f"{col}{fila}"] = val
@@ -115,16 +128,11 @@ def enviar_correo_aviso_plantas(file_path, comercial_email=None):
         logging.error("❌ Faltan variables EMAIL_USER o EMAIL_PASS. Configúralas antes de enviar.")
         return
 
-    # Construcción del mensaje
     msg = MIMEMultipart()
     msg['From'] = EMAIL_ADDRESS
     destinatarios = ['tesoreria@dimensasl.com']
-    if comercial_email:
-        # Validación muy simple (opcional)
-        if "@" in comercial_email:
-            destinatarios.append(comercial_email)
-        else:
-            logging.warning(f"⚠️ Email comercial no válido: {comercial_email}")
+    if comercial_email and "@" in comercial_email:
+        destinatarios.append(comercial_email)
     msg['To'] = ', '.join(destinatarios)
     msg['Subject'] = 'Nuevo formulario de alta de plantas (solo plantas)'
 
@@ -158,7 +166,5 @@ def enviar_correo_aviso_plantas(file_path, comercial_email=None):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
-
 
 
