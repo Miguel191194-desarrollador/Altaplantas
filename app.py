@@ -15,8 +15,9 @@ app.secret_key = 'supersecretkey'
 logging.basicConfig(level=logging.INFO)
 
 # ====== Variables desde Render (.env en local solo para pruebas) ======
-GAS_WEBHOOK_URL = os.getenv("GAS_WEBHOOK_URL")   # URL de tu Apps Script (/exec)
-MAIL_TO_ADMIN  = os.getenv("MAIL_TO_ADMIN")      # opcional, para pruebas
+GAS_WEBHOOK_URL   = os.getenv("GAS_WEBHOOK_URL")                 # URL de tu Apps Script (/exec)
+MAIL_TO_ADMIN     = os.getenv("MAIL_TO_ADMIN")                   # opcional, para pruebas
+TESORERIA_EMAIL   = os.getenv("TESORERIA_EMAIL", "tesoreria@dimensasl.com")  # copia siempre
 
 SAVE_FOLDER = 'formularios_guardados_plantas'
 os.makedirs(SAVE_FOLDER, exist_ok=True)
@@ -46,14 +47,22 @@ def guardar_plantas():
         return redirect(url_for('formulario_plantas'))
 
     # 2) Enviar correo vía Gmail (Apps Script) en segundo plano
-    destinatario = data.get('correo_comercial') or MAIL_TO_ADMIN or "tesoreria@dimensasl.com"
+    destinatario = (data.get('correo_comercial') or MAIL_TO_ADMIN or TESORERIA_EMAIL).strip()
     asunto = "Nuevo formulario de alta de plantas (solo plantas)"
     texto  = "Se ha recibido un formulario con alta de plantas."
     html   = "<p>Se ha recibido un formulario con alta de plantas.</p>"
 
-    threading.Thread(target=enviar_via_gmail_webhook, kwargs=dict(
+    logging.info(f"📧 Envío principal a: {destinatario}")
+    _lanza_envio_seguro(
         to_email=destinatario, subject=asunto, text=texto, html=html, attachment_path=file_path
-    ), daemon=True).start()
+    )
+
+    # Copia a Tesorería SIEMPRE (evita duplicar si ya es el mismo destino)
+    if destinatario.lower() != TESORERIA_EMAIL.lower():
+        logging.info(f"📧 Copia a Tesorería: {TESORERIA_EMAIL}")
+        _lanza_envio_seguro(
+            to_email=TESORERIA_EMAIL, subject=asunto, text=texto, html=html, attachment_path=file_path
+        )
 
     return render_template('gracias.html')
 
@@ -70,21 +79,33 @@ def descargar_ultimo_excel_planta():
 def _env():
     ok_url = "OK" if GAS_WEBHOOK_URL else "MISSING"
     ok_admin = "SET" if MAIL_TO_ADMIN else "EMPTY"
-    return f"GAS_WEBHOOK_URL: {ok_url} | MAIL_TO_ADMIN: {ok_admin}"
+    tesor = TESORERIA_EMAIL or "EMPTY"
+    return f"GAS_WEBHOOK_URL: {ok_url} | MAIL_TO_ADMIN: {ok_admin} | TESORERIA_EMAIL: {tesor}"
 
 # Test de envío aislado (sin formulario)
 @app.route('/_mail_test')
 def _mail_test():
     try:
+        # Prueba: envía a Admin (si hay) y SIEMPRE copia a Tesorería
+        destino_prueba = (MAIL_TO_ADMIN or TESORERIA_EMAIL).strip()
         enviar_via_gmail_webhook(
-            to_email=MAIL_TO_ADMIN or "tesoreria@dimensasl.com",
+            to_email=destino_prueba,
             subject="Prueba desde Render (Gmail webhook)",
             text="Hola",
             html="<b>Hola</b>",
             attachment_path=None
         )
+        if destino_prueba.lower() != TESORERIA_EMAIL.lower():
+            enviar_via_gmail_webhook(
+                to_email=TESORERIA_EMAIL,
+                subject="Prueba (copia Tesorería)",
+                text="Hola Tesorería",
+                html="<b>Hola Tesorería</b>",
+                attachment_path=None
+            )
         return "OK"
     except Exception as e:
+        logging.exception("❌ Falló el envío de prueba")
         return f"ERROR: {e}", 500
 
 # -------------- Lógica de Excel --------------
@@ -111,7 +132,7 @@ def crear_excel_plantas_solas_a_archivo(data, file_path):
     ]
 
     for i in range(1, 11):
-        fila = 4 + i  # empieza en 5
+        fila = 3 + i  # empieza en 5
         valores = [data.get(campo.format(i), "") for campo in campos]
         if not (valores[0] or "").strip():
             continue
@@ -121,6 +142,15 @@ def crear_excel_plantas_solas_a_archivo(data, file_path):
     wb.save(file_path)
 
 # -------------- Envío vía Gmail (Apps Script) --------------
+
+def _lanza_envio_seguro(**kwargs):
+    """Lanza el envío en un hilo y captura errores en log."""
+    def _seguro():
+        try:
+            enviar_via_gmail_webhook(**kwargs)
+        except Exception:
+            logging.exception("❌ Falló el envío de correo (webhook)")
+    threading.Thread(target=_seguro, daemon=True).start()
 
 def enviar_via_gmail_webhook(to_email, subject, text, html, attachment_path=None):
     if not GAS_WEBHOOK_URL:
@@ -142,13 +172,15 @@ def enviar_via_gmail_webhook(to_email, subject, text, html, attachment_path=None
     r = requests.post(GAS_WEBHOOK_URL, json=payload, timeout=20)
     if r.status_code != 200 or "OK" not in r.text:
         raise RuntimeError(f"Webhook Gmail error: {r.status_code} {r.text}")
-    logging.info("✅ Correo enviado vía Gmail (Apps Script)")
+    logging.info(f"✅ Correo enviado vía Gmail (Apps Script) a {to_email}")
 
 # -------------- Main --------------
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+
 
 
 
